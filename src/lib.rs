@@ -185,13 +185,15 @@ impl<'a> Probe<'a> {
     /// This is not terribly useful, and is provided mostly for users who simply
     /// want to reuse a closure that was used to construct the `Probe`, as well
     /// as for convenience and testing of `probe-c-api` itself.
-    pub fn try_compile(&self, source: &[u8]) -> CommandResult {
+    pub fn check_compile(&self, source: &[u8]) -> CommandResult {
         let random_suffix = random::<u64>();
         let source_path = self.work_dir.join(&format!("source-{}.c",
                                                       random_suffix));
-        // FIXME! Check the error from these `try!`'s when there's a problem,
-        // e.g. a permissions issue.
         {
+            // FIXME? Should we try putting in tests for each potential `try!`
+            // error? It's hard to trigger them with Rust 1.0, since the
+            // standard library's filesystem permission operations haven't been
+            // stabilized yet.
             let mut file = try!(fs::File::create(&source_path));
             try!(file.write_all(source));
         }

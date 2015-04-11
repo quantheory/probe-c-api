@@ -14,15 +14,15 @@ use std::default::Default;
 use probe_c_api::Probe;
 
 #[test]
-fn try_compile_pass() {
+fn check_compile_pass() {
     let probe = <Probe>::default();
-    assert!(probe.try_compile("int main() { return 0; }".as_bytes()).unwrap()
-                 .status.success());
+    assert!(probe.check_compile("int main() { return 0; }".as_bytes())
+                 .unwrap().status.success());
 }
 
 #[test]
-fn try_compile_fail() {
+fn check_compile_fail() {
     let probe = <Probe>::default();
-    assert!(!probe.try_compile("ain't it a C progarm, bub!".as_bytes()).unwrap()
-                  .status.success());
+    assert!(!probe.check_compile("ain't it a C progarm, bub!".as_bytes())
+                  .unwrap().status.success());
 }
