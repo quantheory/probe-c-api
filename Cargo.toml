@@ -1,0 +1,9 @@
+[package]
+
+name = "probe-c-api"
+version = "0.0.1"
+authors = ["Sean Patrick Santos <SeanPatrickSantos@gmail.com>"]
+description = "Library to probe C interface types and constants"
+readme = "README.md"
+keywords = ["C", "porting"]
+license = "Apache-2.0"
