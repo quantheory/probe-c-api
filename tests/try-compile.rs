@@ -15,7 +15,6 @@ use std::env;
 use std::ffi::OsString;
 use std::path::Path;
 use std::process::Command;
-use std::str::from_utf8;
 
 use probe_c_api::Probe;
 
@@ -33,9 +32,24 @@ fn try_compile_pass() {
             Command::new(program_path).output()
         },
     );
-    println!("{:?}",
-             from_utf8(&probe.try_compile("int main() { return 0; }".as_bytes()).unwrap()
-                             .stderr));
     assert!(probe.try_compile("int main() { return 0; }".as_bytes()).unwrap()
                  .status.success());
+}
+
+#[test]
+fn try_compile_fail() {
+    // FIXME! Pretty *nix-centric.
+    let probe = Probe::new(
+        Path::new(&env::var_os("TMPDIR").unwrap_or(OsString::from("/tmp"))),
+        |source_path, program_path| {
+            Command::new("gcc").arg("-c").arg(source_path)
+                               .arg("-o").arg(program_path)
+                               .output()
+        },
+        |program_path| {
+            Command::new(program_path).output()
+        },
+    );
+    assert!(!probe.try_compile("ain't it a C progarm, bub!".as_bytes()).unwrap()
+                  .status.success());
 }

@@ -15,6 +15,8 @@
 #![warn(variant_size_differences)]
 #![deny(missing_docs)]
 
+extern crate rand;
+
 use std::boxed::Box;
 use std::env;
 use std::fmt;
@@ -22,6 +24,8 @@ use std::fs;
 use std::io::{self, Write};
 use std::path;
 use std::process;
+
+use rand::random;
 
 // FIXME? It's not clear whether simply aliasing the standard library types will
 // provide the functionality we want from `CommandResult`, so we could hedge our
@@ -78,6 +82,10 @@ impl<'a> Probe<'a> {
     /// failure of a test and an inability to run the test due to security
     /// measures.
     ///
+    /// Files in the `work_dir` are kept from colliding via random number
+    /// generator, which makes it possible to execute tests in parallel, in
+    /// practice.
+    ///
     /// The `compile_to` argument is responsible for taking a source file
     /// `&Path` (the first argument) and producing a runnable program at another
     /// `&Path` (the second argument). This is roughly equivalent to the shell
@@ -114,9 +122,9 @@ impl<'a> Probe<'a> {
     /// want to reuse a closure that was used to construct the `Probe`, as well
     /// as for convenience and testing of `probe-c-api` itself.
     pub fn try_compile(&self, source: &[u8]) -> CommandResult {
-        // FIXME! Adjust name, ideally to make `Probe`'s filesystem operations
-        // thread-safe.
-        let source_path = self.work_dir.join("source.c");
+        let random_suffix = random::<u64>();
+        let source_path = self.work_dir.join(&format!("source-{}.c",
+                                                      random_suffix));
         // FIXME! Check the error from these `try!`'s when there's a problem,
         // e.g. a permissions issue.
         {
@@ -125,7 +133,6 @@ impl<'a> Probe<'a> {
         }
         let program_path = self.work_dir.join("program")
                                .with_extension(env::consts::EXE_EXTENSION);
-        println!("{:?}", program_path);
         (*self.compile_to)(&source_path, &program_path)
     }
 }

@@ -7,3 +7,5 @@ description = "Library to probe C interface types and constants"
 readme = "README.md"
 keywords = ["C", "porting"]
 license = "Apache-2.0"
+
+[dependencies.rand]
