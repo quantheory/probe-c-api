@@ -1,3 +1,7 @@
+# `probe-c-api`
+
+[![Build Status](https://travis-ci.org/quantheory/probe-c-api.svg?branch=master)](https://travis-ci.org/quantheory/probe-c-api)
+
 The purpose of `probe-c-api` is to deal with cases where the API of a C library
 is known well enough to write C code using the library, but not enough is known
 about the interface to write bindings in another language, such as Rust.
