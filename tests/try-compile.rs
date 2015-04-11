@@ -20,9 +20,8 @@ use probe_c_api::Probe;
 
 #[test]
 fn try_compile_pass() {
-    // FIXME! Pretty *nix-centric.
     let probe = Probe::new(
-        Path::new(&env::var_os("TMPDIR").unwrap_or(OsString::from("/tmp"))),
+        &env::temp_dir(),
         |source_path, program_path| {
             Command::new("gcc").arg("-c").arg(source_path)
                                .arg("-o").arg(program_path)
@@ -38,9 +37,8 @@ fn try_compile_pass() {
 
 #[test]
 fn try_compile_fail() {
-    // FIXME! Pretty *nix-centric.
     let probe = Probe::new(
-        Path::new(&env::var_os("TMPDIR").unwrap_or(OsString::from("/tmp"))),
+        &env::temp_dir(),
         |source_path, program_path| {
             Command::new("gcc").arg("-c").arg(source_path)
                                .arg("-o").arg(program_path)
