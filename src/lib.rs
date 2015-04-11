@@ -1,3 +1,12 @@
+// Copyright 2015 Sean Patrick Santos
+//
+// Licensed under the Apache License, Version 2.0.
+// License available at:
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Copyright and license information should be present in the top
+// level directory of this package.
+
 //! # probe-c-api
 //!
 //! The `probe-c-api` library creates and runs short test scripts to examine the
