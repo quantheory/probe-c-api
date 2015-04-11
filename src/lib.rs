@@ -20,7 +20,7 @@
 
 #![warn(missing_copy_implementations, missing_debug_implementations)]
 #![warn(trivial_casts, trivial_numeric_casts, unused_extern_crates)]
-#![warn(unused_import_braces, unused_qualifications)]
+#![warn(unused_import_braces)]
 #![warn(variant_size_differences)]
 #![deny(missing_docs)]
 
@@ -29,13 +29,16 @@ extern crate rand;
 use std::boxed::Box;
 use std::default::Default;
 use std::env;
+use std::error::Error;
 use std::fmt;
 use std::fs;
 use std::io::{self, Write};
-use std::path;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
 use rand::random;
+
+pub use NewProbeError::*;
 
 // FIXME? It's not clear whether simply aliasing the standard library types will
 // provide the functionality we want from `CommandResult`, so we could hedge our
@@ -63,11 +66,49 @@ use rand::random;
 pub type CommandResult = io::Result<process::Output>;
 
 /// Errors that can occur during probe construction.
-#[derive(Clone, Copy, Debug)]
-pub enum NewProbeErr {
+#[derive(Debug)]
+pub enum NewProbeError {
+    /// Error returned if we cannot get the metadata for a work directory.
+    WorkDirMetadataInaccessible(io::Error),
     /// Error returned if the path given for a work directory does not actually
     /// correspond to a directory.
-    WorkDirNotADirectory,
+    WorkDirNotADirectory(PathBuf),
+}
+
+impl fmt::Display for NewProbeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            WorkDirMetadataInaccessible(ref error) => {
+                f.write_fmt(
+                    format_args!("NewProbeError: fs::metadata returned {}",
+                                 error)
+                )
+            }
+            WorkDirNotADirectory(ref path) => {
+                f.write_fmt(
+                    format_args!("NewProbeError: \"{:?}\" is not a directory",
+                                 path)
+                )
+            }
+        }
+    }
+}
+
+impl Error for NewProbeError {
+    fn description(&self) -> &str {
+        match *self {
+            WorkDirMetadataInaccessible(..) => "could not query metadata from
+                                                the provided work directory",
+            WorkDirNotADirectory(..) => "the path in this context must be a
+                                         directory",
+        }
+    }
+    fn cause(&self) -> Option<&Error> {
+        match *self {
+            WorkDirMetadataInaccessible(ref error) => Some(error),
+            WorkDirNotADirectory(..) => None,
+        }
+    }
 }
 
 /// A struct that stores information about how to compile and run test programs.
@@ -77,9 +118,9 @@ pub enum NewProbeErr {
 /// used for the compiler and run commands. If `'static` types implementing `Fn`
 /// are used (e.g. function pointers), the lifetime may be `'static`.
 pub struct Probe<'a> {
-    work_dir: path::PathBuf,
-    compile_to: Box<Fn(&path::Path, &path::Path) -> CommandResult + 'a>,
-    run: Box<Fn(&path::Path) -> CommandResult + 'a>,
+    work_dir: PathBuf,
+    compile_to: Box<Fn(&Path, &Path) -> CommandResult + 'a>,
+    run: Box<Fn(&Path) -> CommandResult + 'a>,
 }
 
 impl<'a> fmt::Debug for Probe<'a> {
@@ -122,13 +163,16 @@ impl<'a> Probe<'a> {
     ///
     /// FIXME! Suggestions for equivalent non-POSIX examples, especially
     /// anything relevant for Windows, are welcomed.
-    pub fn new<C: 'a, R: 'a>(work_dir: &path::Path,
+    pub fn new<C: 'a, R: 'a>(work_dir: &Path,
                              compile_to: C,
-                             run: R) -> Result<Probe<'a>, NewProbeErr>
-        where C: Fn(&path::Path, &path::Path) -> CommandResult,
-              R: Fn(&path::Path) -> CommandResult {
-        if !fs::metadata(work_dir).unwrap().is_dir() {
-            return Err(NewProbeErr::WorkDirNotADirectory);
+                             run: R) -> Result<Probe<'a>, NewProbeError>
+        where C: Fn(&Path, &Path) -> CommandResult,
+              R: Fn(&Path) -> CommandResult {
+        match fs::metadata(work_dir) {
+            Ok(metadata) => if !metadata.is_dir() {
+                return Err(WorkDirNotADirectory(work_dir.to_path_buf()));
+            },
+            Err(error) => { return Err(WorkDirMetadataInaccessible(error)); }
         }
         Ok(Probe {
             work_dir: work_dir.to_path_buf(),

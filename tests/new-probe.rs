@@ -14,7 +14,8 @@ use std::fs;
 use std::io::Write;
 use std::process::Command;
 
-use probe_c_api::{NewProbeErr, Probe};
+use probe_c_api::Probe;
+use probe_c_api::NewProbeError::*;
 
 #[test]
 fn new_probe_checks_directory() {
@@ -29,7 +30,21 @@ fn new_probe_checks_directory() {
         |_| { Command::new(":").output() },
     );
     assert!(match new_probe_result {
-        Err(NewProbeErr::WorkDirNotADirectory) => true,
-        _ => false
+        Err(WorkDirNotADirectory(..)) => true,
+        _ => false,
+    });
+}
+
+#[test]
+fn new_probe_errors_on_inaccessible_metadata() {
+    let fake_path = env::temp_dir().join("not_a_real_directory");
+    let new_probe_result = Probe::new(
+        &fake_path,
+        |_, _| { Command::new(":").output() },
+        |_| { Command::new(":").output() },
+    );
+    assert!(match new_probe_result {
+        Err(WorkDirMetadataInaccessible(..)) => true,
+        _ => false,
     });
 }
