@@ -68,5 +68,12 @@ In such cases, there are three possible approaches:
     wraps a C compiler can handle compilation, `probe-c-api` can handle
     auto-generating test programs and interpreting the results, standard
     libraries can handle interaction with the OS, and the user can handle any
-    quirks relevant to their particular case. Not coincidentally, this also
-    reduces the scope of `probe-c-api`.
+    quirks relevant to their particular case. In particular, the user can handle
+    cross-compilation by running test programs outside of the build platform, by
+    sending the executable over the network, to a machine attached as a
+    peripheral device, or to an emulator.
+
+    Not coincidentally, by requiring the user to specify how the probe should
+    interact with the C compiler and target platform, this design reduces the
+    scope of `probe-c-api`, making it much simpler to implement as a standalone
+    crate.
