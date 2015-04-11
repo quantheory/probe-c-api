@@ -7,8 +7,6 @@
 // Copyright and license information should be present in the top
 // level directory of this package.
 
-#![crate_type="bin"]
-
 extern crate probe_c_api;
 
 use std::default::Default;
