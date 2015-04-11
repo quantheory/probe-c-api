@@ -18,12 +18,13 @@
 extern crate rand;
 
 use std::boxed::Box;
+use std::default::Default;
 use std::env;
 use std::fmt;
 use std::fs;
 use std::io::{self, Write};
 use std::path;
-use std::process;
+use std::process::{self, Command};
 
 use rand::random;
 
@@ -134,5 +135,25 @@ impl<'a> Probe<'a> {
         let program_path = self.work_dir.join("program")
                                .with_extension(env::consts::EXE_EXTENSION);
         (*self.compile_to)(&source_path, &program_path)
+    }
+}
+
+/// We provide a default `Probe<'static>` that runs in an OS-specific temporary
+/// directory, uses gcc, and simply runs each test.
+///
+/// FIXME? Can we do better than the gcc command on Windows?
+impl Default for Probe<'static> {
+    fn default() -> Self {
+        Probe::new(
+            &env::temp_dir(),
+            |source_path, program_path| {
+                Command::new("gcc").arg("-c").arg(source_path)
+                                   .arg("-o").arg(program_path)
+                                   .output()
+            },
+            |program_path| {
+                Command::new(program_path).output()
+            },
+        )
     }
 }
