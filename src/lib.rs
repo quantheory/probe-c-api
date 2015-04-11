@@ -62,6 +62,14 @@ use rand::random;
 ///     `process::Output`.)
 pub type CommandResult = io::Result<process::Output>;
 
+/// Errors that can occur during probe construction.
+#[derive(Clone, Copy, Debug)]
+pub enum NewProbeErr {
+    /// Error returned if the path given for a work directory does not actually
+    /// correspond to a directory.
+    WorkDirNotADirectory,
+}
+
 /// A struct that stores information about how to compile and run test programs.
 ///
 /// The main functionality of `probe_c_api` is implemented using the methods on
@@ -116,15 +124,17 @@ impl<'a> Probe<'a> {
     /// anything relevant for Windows, are welcomed.
     pub fn new<C: 'a, R: 'a>(work_dir: &path::Path,
                              compile_to: C,
-                             run: R) -> Probe<'a>
+                             run: R) -> Result<Probe<'a>, NewProbeErr>
         where C: Fn(&path::Path, &path::Path) -> CommandResult,
               R: Fn(&path::Path) -> CommandResult {
-        // FIXME! Check that work_dir is a directory.
-        Probe {
+        if !fs::metadata(work_dir).unwrap().is_dir() {
+            return Err(NewProbeErr::WorkDirNotADirectory);
+        }
+        Ok(Probe {
             work_dir: work_dir.to_path_buf(),
             compile_to: Box::new(compile_to),
             run: Box::new(run),
-        }
+        })
     }
     /// Write a byte stream to a file, then attempt to compile it.
     ///
@@ -150,6 +160,10 @@ impl<'a> Probe<'a> {
 /// We provide a default `Probe<'static>` that runs in an OS-specific temporary
 /// directory, uses gcc, and simply runs each test.
 ///
+/// # Panics
+///
+/// Panics if probe creation fails.
+///
 /// FIXME? Can we do better than the gcc command on Windows?
 impl Default for Probe<'static> {
     fn default() -> Self {
@@ -163,6 +177,6 @@ impl Default for Probe<'static> {
             |program_path| {
                 Command::new(program_path).output()
             },
-        )
+        ).unwrap()
     }
 }
