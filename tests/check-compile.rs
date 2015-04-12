@@ -16,13 +16,13 @@ use probe_c_api::Probe;
 #[test]
 fn check_compile_pass() {
     let probe = <Probe>::default();
-    assert!(probe.check_compile("int main() { return 0; }".as_bytes())
+    assert!(probe.check_compile("int main() { return 0; }")
                  .unwrap().status.success());
 }
 
 #[test]
 fn check_compile_fail() {
     let probe = <Probe>::default();
-    assert!(!probe.check_compile("ain't it a C progarm, bub!".as_bytes())
+    assert!(!probe.check_compile("ain't it a C progarm, bub!")
                   .unwrap().status.success());
 }

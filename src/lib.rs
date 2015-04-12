@@ -7,7 +7,7 @@
 // Copyright and license information should also be present in the top
 // level directory of this package.
 
-//! # probe-c-api
+//! # About `probe-c-api`
 //!
 //! The `probe-c-api` library creates and runs short test scripts to examine the
 //! representation of types and the representations and values of constants in a
@@ -17,6 +17,12 @@
 //! future, e.g. by probing other aspects of a C API, by probing features in
 //! other C-like languages (especially C++), or by adding features to aid in
 //! writing bindings for other languages.
+//!
+//! # Source file encoding
+//!
+//! Currently, all strings corresponding to C source code are represented as
+//! UTF-8. If this is a problem, the user may modify the compile and run
+//! functions commands to do appropriate translation.
 
 #![warn(missing_copy_implementations, missing_debug_implementations)]
 #![warn(trivial_casts, trivial_numeric_casts, unused_extern_crates)]
@@ -31,6 +37,7 @@ use std::default::Default;
 use std::env;
 use std::error::Error;
 use std::fmt;
+use std::fmt::Write as FormatWrite;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -232,7 +239,7 @@ impl<'a> Probe<'a> {
     /// This is not terribly useful, and is provided mostly for users who simply
     /// want to reuse a closure that was used to construct the `Probe`, as well
     /// as for convenience and testing of `probe-c-api` itself.
-    pub fn check_compile(&self, source: &[u8]) -> CommandResult {
+    pub fn check_compile(&self, source: &str) -> CommandResult {
         let (source_path, exe_path) = self.random_source_and_exe_paths();
         try!(write_to_new_file(&source_path, source));
         let compile_output = try!((*self.compile_to)(&source_path, &exe_path));
@@ -253,7 +260,7 @@ impl<'a> Probe<'a> {
     ///
     /// Like `check_compile`, this provides little value, but is available as a
     /// minor convenience.
-    pub fn check_run(&self, source: &[u8]) -> CompileRunResult {
+    pub fn check_run(&self, source: &str) -> CompileRunResult {
         let (source_path, exe_path) = self.random_source_and_exe_paths();
         try!(write_to_new_file(&source_path, source));
         let compile_output = try!((*self.compile_to)(&source_path, &exe_path));
@@ -271,18 +278,29 @@ impl<'a> Probe<'a> {
         })
     }
 
-    /// Get the size of a type, in bytes.
-    pub fn check_sizeof(&self, type_: &[u8]) -> io::Result<usize> {
-        // FIXME! Should not have an intermediate string conversion.
-        let source = format!("#include \"stdio.h\"
+    /// Utility for various checks that use a type in some simple way in main.
+    fn main_source_template(&self, headers: Vec<&str>, main_body: &str)
+                            -> String {
+        let mut header_includes = String::new();
+        for header in &headers {
+            write!(&mut header_includes, "#include {}\n", header).unwrap();
+        }
+        format!("{}\n\
+                 int main(int argc, char **argv) {{\n\
+                 {}\n\
+                 }}\n",
+                header_includes,
+                main_body)
+    }
 
-int main(int argc, char **argv) {{
-  printf(\"%zd\\n\", sizeof({}));
-  return 0;
-}}
-",
-                             String::from_utf8_lossy(type_));
-        let compile_run_output = try!(self.check_run(source.as_bytes()));
+    /// Get the size of a type, in bytes.
+    pub fn check_sizeof(&self, type_: &str) -> io::Result<usize> {
+        let headers: Vec<&str> = vec!["<stdio.h>"];
+        let main_body = format!("printf(\"%zd\\n\", sizeof({}));\n\
+                                 return 0;",
+                                type_);
+        let source = self.main_source_template(headers, &main_body);
+        let compile_run_output = try!(self.check_run(&source));
         // FIXME! Deal with compilation/run errors properly.
         let run_out_string = from_utf8(&compile_run_output.run_output.unwrap()
                                                           .stdout)
@@ -292,12 +310,12 @@ int main(int argc, char **argv) {{
 }
 
 // Little utility to cat something to a new file.
-fn write_to_new_file(path: &Path, bytes: &[u8]) -> io::Result<()> {
+fn write_to_new_file(path: &Path, text: &str) -> io::Result<()> {
     // FIXME? Should we try putting in tests for each potential `try!` error?
     // It's hard to trigger them with Rust 1.0, since the standard library's
     // filesystem permission operations haven't been stabilized yet.
     let mut file = try!(fs::File::create(path));
-    file.write_all(bytes)
+    write!(&mut file, "{}", text)
 }
 
 /// We provide a default `Probe<'static>` that runs in an OS-specific temporary

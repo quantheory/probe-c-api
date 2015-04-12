@@ -16,6 +16,6 @@ use probe_c_api::Probe;
 #[test]
 fn sizeof_char() {
     let probe = <Probe>::default();
-    let char_size = probe.check_sizeof("char".as_bytes()).unwrap();
+    let char_size = probe.check_sizeof("char").unwrap();
     assert_eq!(1, char_size);
 }
