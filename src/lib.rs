@@ -38,7 +38,7 @@ use std::process::{self, Command};
 
 use rand::random;
 
-pub use NewProbeError::*;
+use NewProbeError::*;
 
 // FIXME? It's not clear whether simply aliasing the standard library types will
 // provide the functionality we want from `CommandResult`, so we could hedge our
@@ -97,9 +97,9 @@ impl fmt::Display for NewProbeError {
 impl Error for NewProbeError {
     fn description(&self) -> &str {
         match *self {
-            WorkDirMetadataInaccessible(..) => "could not query metadata from
+            WorkDirMetadataInaccessible(..) => "could not query metadata from \
                                                 the provided work directory",
-            WorkDirNotADirectory(..) => "the path in this context must be a
+            WorkDirNotADirectory(..) => "the path in this context must be a \
                                          directory",
         }
     }
@@ -110,6 +110,38 @@ impl Error for NewProbeError {
         }
     }
 }
+
+/// Outputs of both compilation and running.
+pub struct CompileRunOutput {
+    /// Output of the compilation phase.
+    pub compile_output: process::Output,
+    /// Output of the run phase. It is optional because if the compilation
+    /// failed, we won't try to run at all.
+    pub run_output: Option<process::Output>,
+}
+
+impl fmt::Debug for CompileRunOutput {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        fn output_as_string(output: &process::Output) -> String {
+            format!("{{ status: {:?}, stdout: {}, stderr: {} }}",
+                    output.status, String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr))
+        }
+        f.write_fmt(
+            format_args!("probe_c_api::CompileRunOutput{{ \
+                          compile output: {} \
+                          run output: {} \
+                          }}",
+                         output_as_string(&self.compile_output),
+                         self.run_output.as_ref().map_or(
+                             "None".to_string(),
+                             |output| output_as_string(output)))
+        )
+    }
+}
+
+/// Result of checks that compile and run a program.
+pub type CompileRunResult = io::Result<CompileRunOutput>;
 
 /// A struct that stores information about how to compile and run test programs.
 ///
@@ -180,27 +212,72 @@ impl<'a> Probe<'a> {
             run: Box::new(run),
         })
     }
-    /// Write a byte stream to a file, then attempt to compile it.
+
+    // Create random paths for compilation input/output. This is intended
+    // primarily to prevent two concurrently running probes from using each
+    // others' files.
+    fn random_source_and_exe_paths(&self) -> (PathBuf, PathBuf) {
+        let random_suffix = random::<u64>();
+        let source_path = self.work_dir.join(&format!("source-{}.c",
+                                                      random_suffix));
+        let exe_path = self.work_dir.join(&format!("exe-{}",
+                                                   random_suffix))
+                                    .with_extension(env::consts::EXE_EXTENSION);
+        (source_path, exe_path)
+    }
+
+    /// Write a byte slice to a file, then attempt to compile it.
     ///
     /// This is not terribly useful, and is provided mostly for users who simply
     /// want to reuse a closure that was used to construct the `Probe`, as well
     /// as for convenience and testing of `probe-c-api` itself.
     pub fn check_compile(&self, source: &[u8]) -> CommandResult {
-        let random_suffix = random::<u64>();
-        let source_path = self.work_dir.join(&format!("source-{}.c",
-                                                      random_suffix));
-        {
-            // FIXME? Should we try putting in tests for each potential `try!`
-            // error? It's hard to trigger them with Rust 1.0, since the
-            // standard library's filesystem permission operations haven't been
-            // stabilized yet.
-            let mut file = try!(fs::File::create(&source_path));
-            try!(file.write_all(source));
+        let (source_path, exe_path) = self.random_source_and_exe_paths();
+        try!(write_to_new_file(&source_path, source));
+        let compile_output = try!((*self.compile_to)(&source_path, &exe_path));
+        try!(fs::remove_file(&source_path));
+        // Remove the generated executable if it exists.
+        match fs::remove_file(&exe_path) {
+            Ok(..) => {}
+            Err(error) => {
+                if error.kind() != io::ErrorKind::NotFound {
+                    return Err(error);
+                }
+            }
         }
-        let program_path = self.work_dir.join("program")
-                               .with_extension(env::consts::EXE_EXTENSION);
-        (*self.compile_to)(&source_path, &program_path)
+        Ok(compile_output)
     }
+
+    /// Write a byte slice to a file, then attempt to compile and run it.
+    ///
+    /// Like `check_compile`, this provides little value, but is available as a
+    /// minor convenience.
+    pub fn check_run(&self, source: &[u8]) -> CompileRunResult {
+        let (source_path, exe_path) = self.random_source_and_exe_paths();
+        try!(write_to_new_file(&source_path, source));
+        let compile_output = try!((*self.compile_to)(&source_path, &exe_path));
+        try!(fs::remove_file(&source_path));
+        let run_output;
+        if compile_output.status.success() {
+            run_output = Some(try!((*self.run)(&exe_path)));
+            try!(fs::remove_file(&exe_path));
+        } else {
+            run_output = None;
+        }
+        Ok(CompileRunOutput{
+            compile_output: compile_output,
+            run_output: run_output,
+        })
+    }
+}
+
+// Little utility to cat something to a new file.
+fn write_to_new_file(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    // FIXME? Should we try putting in tests for each potential `try!` error?
+    // It's hard to trigger them with Rust 1.0, since the standard library's
+    // filesystem permission operations haven't been stabilized yet.
+    let mut file = try!(fs::File::create(path));
+    file.write_all(bytes)
 }
 
 /// We provide a default `Probe<'static>` that runs in an OS-specific temporary
@@ -215,13 +292,13 @@ impl Default for Probe<'static> {
     fn default() -> Self {
         Probe::new(
             &env::temp_dir(),
-            |source_path, program_path| {
-                Command::new("gcc").arg("-c").arg(source_path)
-                                   .arg("-o").arg(program_path)
+            |source_path, exe_path| {
+                Command::new("gcc").arg(source_path)
+                                   .arg("-o").arg(exe_path)
                                    .output()
             },
-            |program_path| {
-                Command::new(program_path).output()
+            |exe_path| {
+                Command::new(exe_path).output()
             },
         ).unwrap()
     }
