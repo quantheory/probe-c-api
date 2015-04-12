@@ -35,6 +35,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
+use std::str::{FromStr, from_utf8};
 
 use rand::random;
 
@@ -268,6 +269,25 @@ impl<'a> Probe<'a> {
             compile_output: compile_output,
             run_output: run_output,
         })
+    }
+
+    /// Get the size of a type, in bytes.
+    pub fn check_sizeof(&self, type_: &[u8]) -> io::Result<usize> {
+        // FIXME! Should not have an intermediate string conversion.
+        let source = format!("#include \"stdio.h\"
+
+int main(int argc, char **argv) {{
+  printf(\"%zd\\n\", sizeof({}));
+  return 0;
+}}
+",
+                             String::from_utf8_lossy(type_));
+        let compile_run_output = try!(self.check_run(source.as_bytes()));
+        // FIXME! Deal with compilation/run errors properly.
+        let run_out_string = from_utf8(&compile_run_output.run_output.unwrap()
+                                                          .stdout)
+                                 .unwrap().to_string();
+        Ok(FromStr::from_str(run_out_string.trim()).unwrap())
     }
 }
 
