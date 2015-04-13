@@ -496,7 +496,7 @@ impl Default for Probe<'static> {
             vec![],
             &env::temp_dir(),
             |source_path, exe_path| {
-                Command::new("gcc").arg("-std=gnu11").arg(source_path)
+                Command::new("gcc").arg(source_path)
                                    .arg("-o").arg(exe_path)
                                    .output()
             },
