@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Probe` struct in crate `probe_c_api`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Probe">
+
+    <title>probe_c_api::Probe - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../main.css">
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <section class="sidebar">
+        
+        <p class='location'><a href='index.html'>probe_c_api</a></p><script>window.sidebarCurrent = {name: 'Probe', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </section>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press 'S' to search, '?' for more options..."
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>probe_c_api</a>::<wbr><a class='struct' href=''>Probe</a><wbr></span><span class='out-of-band'><span id='render-detail'>
+            <a id="collapse-all" href="#">[-]</a>&nbsp;<a id="expand-all" href="#">[+]</a>
+        </span><a id='src-796' href='../src/probe_c_api/lib.rs.html#291-296'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Probe&lt;'a&gt; {
+    // some fields omitted
+}</pre><div class='docblock'><p>A struct that stores information about how to compile and run test programs.</p>
+
+<p>The main functionality of <code>probe_c_api</code> is implemented using the methods on
+<code>Probe</code>. The lifetime parameter is provided in order to allow closures to be
+used for the compiler and run commands. If <code>&#39;static</code> types implementing <code>Fn</code>
+are used (e.g. function pointers), the lifetime may be <code>&#39;static</code>.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><a class='stability Unmarked' title='No stability level'></a><code>impl&lt;'a&gt; <a class='struct' href='../probe_c_api/struct.Probe.html' title='probe_c_api::Probe'>Probe</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.new' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.new' class='fnname'>new</a>&lt;C: 'a, R: 'a&gt;(headers: <a class='struct' href='http://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='struct' href='http://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>&gt;, work_dir: &amp;<a class='struct' href='http://doc.rust-lang.org/nightly/std/path/struct.Path.html' title='std::path::Path'>Path</a>, compile_to: C, run: R) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a class='struct' href='../probe_c_api/struct.Probe.html' title='probe_c_api::Probe'>Probe</a>&lt;'a&gt;, <a class='enum' href='../probe_c_api/enum.NewProbeError.html' title='probe_c_api::NewProbeError'>NewProbeError</a>&gt; <span class='where'>where C: <a class='trait' href='http://doc.rust-lang.org/nightly/core/ops/trait.Fn.html' title='core::ops::Fn'>Fn</a>(&amp;<a class='struct' href='http://doc.rust-lang.org/nightly/std/path/struct.Path.html' title='std::path::Path'>Path</a>, &amp;<a class='struct' href='http://doc.rust-lang.org/nightly/std/path/struct.Path.html' title='std::path::Path'>Path</a>) -&gt; <a class='type' href='../probe_c_api/type.CommandResult.html' title='probe_c_api::CommandResult'>CommandResult</a>, R: <a class='trait' href='http://doc.rust-lang.org/nightly/core/ops/trait.Fn.html' title='core::ops::Fn'>Fn</a>(&amp;<a class='struct' href='http://doc.rust-lang.org/nightly/std/path/struct.Path.html' title='std::path::Path'>Path</a>) -&gt; <a class='type' href='../probe_c_api/type.CommandResult.html' title='probe_c_api::CommandResult'>CommandResult</a></span></code></h4>
+<div class='docblock'><p>Construct a <code>Probe</code> by specifying a work directory, a method to compile
+a C program, and a method to run a C program.</p>
+
+<p>The <code>headers</code> argument is a vector of headers to include in every C
+program written by this probe. Each header should have the <code>&lt;&gt;</code> or <code>&quot;&quot;</code>
+delimiters surrounding it.</p>
+
+<p>The <code>work_dir</code> argument should be a path to a directory where the probe
+can read, write, and execute files. We could attempt to verify this, but
+in practice there are too many platforms and security measures out
+there. So it is up to the user to figure out the difference between a
+failure of a test and an inability to run the test due to security
+measures.</p>
+
+<p>Files in the <code>work_dir</code> are kept from colliding via random number
+generator, which makes it possible to execute tests in parallel, in
+practice.</p>
+
+<p>The <code>compile_to</code> argument is responsible for taking a source file
+<code>&amp;Path</code> (the first argument) and producing a runnable program at another
+<code>&amp;Path</code> (the second argument). This is roughly equivalent to the shell
+script:</p>
+
+<pre><code class="language-sh">gcc -c $1 -o $2
+</code></pre>
+
+<p><code>compile_to</code> should yield a <code>CommandResult</code>, which allows the exit
+status to be checked, and provides the standard output and error for
+debugging purposes.</p>
+
+<p>The <code>run</code> argument is responsible for running the process and yielding
+its status and output, again as a <code>CommandResult</code>.</p>
+
+<p>FIXME! Suggestions for equivalent non-POSIX examples, especially
+anything relevant for Windows, are welcomed.</p>
+</div><h4 id='method.check_compile' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.check_compile' class='fnname'>check_compile</a>(&amp;self, source: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../probe_c_api/type.CommandResult.html' title='probe_c_api::CommandResult'>CommandResult</a></code></h4>
+<div class='docblock'><p>Write a byte slice to a file, then attempt to compile it.</p>
+
+<p>This is not terribly useful, and is provided mostly for users who simply
+want to reuse a closure that was used to construct the <code>Probe</code>, as well
+as for convenience and testing of <code>probe-c-api</code> itself.</p>
+</div><h4 id='method.check_run' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.check_run' class='fnname'>check_run</a>(&amp;self, source: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='http://doc.rust-lang.org/nightly/std/io/error/type.Result.html' title='std::io::error::Result'>Result</a>&lt;<a class='struct' href='../probe_c_api/struct.CompileRunOutput.html' title='probe_c_api::CompileRunOutput'>CompileRunOutput</a>&gt;</code></h4>
+<div class='docblock'><p>Write a byte slice to a file, then attempt to compile and run it.</p>
+
+<p>Like <code>check_compile</code>, this provides little value, but is available as a
+minor convenience.</p>
+</div><h4 id='method.size_of' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.size_of' class='fnname'>size_of</a>(&amp;self, type_: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../probe_c_api/type.CProbeResult.html' title='probe_c_api::CProbeResult'>CProbeResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>&gt;</code></h4>
+<div class='docblock'><p>Get the size of a C type, in bytes.</p>
+</div><h4 id='method.align_of' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.align_of' class='fnname'>align_of</a>(&amp;self, type_: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../probe_c_api/type.CProbeResult.html' title='probe_c_api::CProbeResult'>CProbeResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a>&gt;</code></h4>
+<div class='docblock'><p>Get the alignment of a C type, in bytes.</p>
+
+<p>Note that this method depends on the compiler having implemented C11
+alignment facilities (specifically <code>stdalign.h</code> and <code>alignof</code>).</p>
+</div><h4 id='method.is_defined_macro' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.is_defined_macro' class='fnname'>is_defined_macro</a>(&amp;self, token: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../probe_c_api/type.CProbeResult.html' title='probe_c_api::CProbeResult'>CProbeResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>&gt;</code></h4>
+<div class='docblock'><p>Check to see if a macro is defined.</p>
+
+<p>One obvious use for this is to check for macros that are intended to be
+used with <code>#ifdef</code>, e.g. macros that communicate configuration options
+originally used to build the library.</p>
+
+<p>A less obvious use is to check whether or not a constant or function has
+been implemented as a macro, for cases where this is not specified in
+the API documentation, or differs between library versions. In such
+cases, bindings may have to omit functionality provided by macros, or
+else implement such functionality via some special workaround.</p>
+</div><h4 id='method.is_signed' class='method'><a class='stability Unmarked' title='No stability level'></a><code>fn <a href='#method.is_signed' class='fnname'>is_signed</a>(&amp;self, type_: &amp;<a href='http://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../probe_c_api/type.CProbeResult.html' title='probe_c_api::CProbeResult'>CProbeResult</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.bool.html'>bool</a>&gt;</code></h4>
+<div class='docblock'><p>Check to see if an integer type is signed or unsigned.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><a class='stability Stable' title='Stable'></a><code>impl&lt;'a&gt; <a class='trait' href='http://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html' title='core::fmt::Debug'>Debug</a> for <a class='struct' href='../probe_c_api/struct.Probe.html' title='probe_c_api::Probe'>Probe</a>&lt;'a&gt;</code></h3><div class='impl-items'><h4 id='method.fmt' class='method'><a class='stability Stable' title='Stable'></a><code>fn <a href='#method.fmt' class='fnname'>fmt</a>(&amp;self, f: &amp;mut <a class='struct' href='http://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html' title='core::fmt::Formatter'>Formatter</a>) -&gt; <a class='enum' href='http://doc.rust-lang.org/nightly/core/result/enum.Result.html' title='core::result::Result'>Result</a>&lt;<a href='http://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>, <a class='struct' href='http://doc.rust-lang.org/nightly/core/fmt/struct.Error.html' title='core::fmt::Error'>Error</a>&gt;</code></h4>
+</div><h3 class='impl'><a class='stability Stable' title='Stable'></a><code>impl <a class='trait' href='http://doc.rust-lang.org/nightly/core/default/trait.Default.html' title='core::default::Default'>Default</a> for <a class='struct' href='../probe_c_api/struct.Probe.html' title='probe_c_api::Probe'>Probe</a>&lt;'static&gt;</code></h3><div class='docblock'><p>We provide a default <code>Probe&lt;&#39;static&gt;</code> that runs in an OS-specific temporary
+directory, uses gcc, and simply runs each test.</p>
+
+<h1 id="panics" class='section-header'><a
+                           href="#panics">Panics</a></h1>
+<p>Panics if probe creation fails.</p>
+
+<p>FIXME? Can we do better than the gcc command on Windows?</p>
+</div><div class='impl-items'><h4 id='method.default' class='method'><a class='stability Stable' title='Stable'></a><code>fn <a href='#method.default' class='fnname'>default</a>() -&gt; <a class='struct' href='../probe_c_api/struct.Probe.html' title='probe_c_api::Probe'>Probe</a>&lt;'static&gt;</code></h4>
+</div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <div id="help" class="hidden">
+        <div class="shortcuts">
+            <h1>Keyboard shortcuts</h1>
+            <dl>
+                <dt>?</dt>
+                <dd>Show this help dialog</dd>
+                <dt>S</dt>
+                <dd>Focus the search field</dd>
+                <dt>&larrb;</dt>
+                <dd>Move up in search results</dd>
+                <dt>&rarrb;</dt>
+                <dd>Move down in search results</dd>
+                <dt>&#9166;</dt>
+                <dd>Go to active search result</dd>
+            </dl>
+        </div>
+        <div class="infos">
+            <h1>Search tricks</h1>
+            <p>
+                Prefix searches with a type followed by a colon (e.g.
+                <code>fn:</code>) to restrict the search to a given type.
+            </p>
+            <p>
+                Accepted types are: <code>fn</code>, <code>mod</code>,
+                <code>struct</code>, <code>enum</code>,
+                <code>trait</code>, <code>typedef</code> (or
+                <code>tdef</code>).
+            </p>
+        </div>
+    </div>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "probe_c_api";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../jquery.js"></script>
+    <script src="../main.js"></script>
+    
+    <script async src="../search-index.js"></script>
+</body>
+</html>
