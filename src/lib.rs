@@ -484,7 +484,7 @@ impl<'a> Probe<'a> {
     /// cases, bindings may have to omit functionality provided by macros, or
     /// else implement such functionality via some special workaround.
     pub fn macro_is_defined(&self, macro_: &str) -> CProbeResult<bool> {
-        let headers: Vec<&str> = vec!["<stdio.h>", "<stdalign.h>"];
+        let headers: Vec<&str> = vec!["<stdio.h>"];
         let main_body = format!("#ifdef {}\n\
                                  printf(\"true\");\n\
                                  #else\n\
