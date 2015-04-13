@@ -429,7 +429,7 @@ impl<'a> Probe<'a> {
                 main_body)
     }
 
-    /// Get the size of a type, in bytes.
+    /// Get the size of a C type, in bytes.
     pub fn check_sizeof(&self, type_: &str) -> CProbeResult<usize> {
         let headers: Vec<&str> = vec!["<stdio.h>"];
         let main_body = format!("printf(\"%zd\\n\", sizeof({}));\n\
@@ -444,6 +444,29 @@ impl<'a> Probe<'a> {
         // here.
         match FromStr::from_str(run_out_string.trim()) {
             Ok(size) => Ok(size),
+            Err(..) => Err(OtherError("unexpected output from probe program"
+                                      .to_string())),
+        }
+    }
+
+    /// Get the alignment of a C type, in bytes.
+    ///
+    /// Note that this method depends on the compiler having implemented C11
+    /// alignment facilities (specifically `stdalign.h` and `alignof`).
+    pub fn check_alignof(&self, type_: &str) -> CProbeResult<usize> {
+        let headers: Vec<&str> = vec!["<stdio.h>", "<stdalign.h>"];
+        let main_body = format!("printf(\"%zd\\n\", alignof({}));\n\
+                                 return 0;",
+                                type_);
+        let source = self.main_source_template(headers, &main_body);
+        let compile_run_output = try!(self.check_run(&source));
+        let run_out_string = try!(compile_run_output.successful_run_output());
+        // If the program produces invalid output, we don't really check what's
+        // wrong with the output right now. Either the lossy UTF-8 conversion
+        // will produce nonsense, or we will just fail to pick out a number
+        // here.
+        match FromStr::from_str(run_out_string.trim()) {
+            Ok(align) => Ok(align),
             Err(..) => Err(OtherError("unexpected output from probe program"
                                       .to_string())),
         }
