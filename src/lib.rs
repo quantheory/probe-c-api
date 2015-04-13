@@ -151,6 +151,10 @@ impl fmt::Debug for CompileRunOutput {
     }
 }
 
+// FIXME! In general there could be a lot more testing of error paths. The
+// simplest way to do this would be to create a `Probe` that spoofs `Output`s
+// that trigger each of these errors.
+
 /// Error type used when a C API probing program fails to compile or run.
 pub enum CProbeError {
     /// An I/O error prevented the operation from continuing.
