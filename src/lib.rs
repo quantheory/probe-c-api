@@ -151,6 +151,29 @@ impl fmt::Debug for CompileRunOutput {
     }
 }
 
+impl CompileRunOutput {
+    /// Returns a probe program's standard output as a UTF-8 string.
+    ///
+    /// This function does not panic. If the compilation or run failed, this is
+    /// reported in the error. If the program's output is not valid UTF-8, lossy
+    /// conversion is performed.
+    pub fn successful_run_output(&self) -> CProbeResult<String> {
+        match self.run_output {
+            Some(ref run_output) => {
+                if run_output.status.success() {
+                    Ok(String::from_utf8_lossy(&run_output.stdout).into_owned())
+                } else {
+                    Err(RunError(self.compile_output.clone(),
+                                 run_output.clone()))
+                }
+            }
+            None => {
+                Err(CompileError(self.compile_output.clone()))
+            }
+        }
+    }
+}
+
 // FIXME! In general there could be a lot more testing of error paths. The
 // simplest way to do this would be to create a `Probe` that spoofs `Output`s
 // that trigger each of these errors.
@@ -404,19 +427,7 @@ impl<'a> Probe<'a> {
                                 type_);
         let source = self.main_source_template(headers, &main_body);
         let compile_run_output = try!(self.check_run(&source));
-        let run_out_string = match compile_run_output.run_output {
-            Some(ref run_output) => {
-                if run_output.status.success() {
-                    String::from_utf8_lossy(&run_output.stdout)
-                } else {
-                    return Err(RunError(compile_run_output.compile_output,
-                                        run_output.clone()));
-                }
-            }
-            None => {
-                return Err(CompileError(compile_run_output.compile_output));
-            }
-        };
+        let run_out_string = try!(compile_run_output.successful_run_output());
         // If the program produces invalid output, we don't really check what's
         // wrong with the output right now. Either the lossy UTF-8 conversion
         // will produce nonsense, or we will just fail to pick out a number
