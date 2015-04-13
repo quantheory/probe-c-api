@@ -1,11 +1,13 @@
 [package]
 
 name = "probe-c-api"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Sean Patrick Santos <SeanPatrickSantos@gmail.com>"]
 description = "Library to probe C interface types and constants"
+repository = "https://github.com/quantheory/probe-c-api"
 readme = "README.md"
-keywords = ["C", "porting"]
+keywords = ["bindings", "build", "C", "porting"]
 license = "Apache-2.0"
 
 [dependencies.rand]
+version = "0.3.7"
