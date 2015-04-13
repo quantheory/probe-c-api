@@ -432,9 +432,9 @@ impl<'a> Probe<'a> {
     /// Utility for code that simply prints a Rust constant, readable using
     /// `FromStr::from_str`, in `main`.
     fn run_to_get_rust_constant<T: FromStr>(&self,
-                                                 headers: Vec<&str>,
-                                                 main_body: &str)
-                                                 -> CProbeResult<T> {
+                                            headers: Vec<&str>,
+                                            main_body: &str)
+                                            -> CProbeResult<T> {
         let source = self.main_source_template(headers, &main_body);
         let compile_run_output = try!(self.check_run(&source));
         let run_out_string = try!(compile_run_output.successful_run_output());
@@ -490,6 +490,19 @@ impl<'a> Probe<'a> {
                                  #endif\n\
                                  return 0;",
                                 macro_);
+        self.run_to_get_rust_constant(headers, &main_body)
+    }
+
+    /// Check to see if an integer type is signed or unsigned.
+    pub fn is_signed(&self, type_: &str) -> CProbeResult<bool> {
+        let headers: Vec<&str> = vec!["<stdio.h>"];
+        let main_body = format!("if ((({})-1) < 0) {{\n\
+                                 printf(\"true\");\n\
+                                 }} else {{\n\
+                                 printf(\"false\");\n\
+                                 }}\n\
+                                 return 0;",
+                                type_);
         self.run_to_get_rust_constant(headers, &main_body)
     }
 }
