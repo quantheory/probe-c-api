@@ -160,6 +160,8 @@ pub enum CProbeError {
     /// The probing program failed when run. The compilation output is included
     /// to assist debugging.
     RunError(process::Output, process::Output),
+    /// All other errors, e.g. corrupt output from a probe program.
+    OtherError(String),
 }
 
 impl fmt::Debug for CProbeError {
@@ -183,6 +185,12 @@ impl fmt::Debug for CProbeError {
                                   }}",
                                  output_as_string(compile_output),
                                  output_as_string(run_output))
+                )
+            }
+            OtherError(ref string) => {
+                f.write_fmt(
+                    format_args!("OtherError{{ {} }}",
+                                 string)
                 )
             }
         }
@@ -209,6 +217,9 @@ impl fmt::Display for CProbeError {
                                  output_as_string(run_output))
                 )
             }
+            OtherError(ref string) => {
+                f.write_str(string)
+            }
         }
     }
 }
@@ -219,12 +230,13 @@ impl Error for CProbeError {
             IoError(..) => "I/O error",
             CompileError(..) => "error when compiling C probe program",
             RunError(..) => "error when running C probe program",
+            OtherError(ref string) => string,
         }
     }
     fn cause(&self) -> Option<&Error> {
         match *self {
             IoError(ref error) => Some(error),
-            CompileError(..) | RunError(..) => None,
+            CompileError(..) | RunError(..) | OtherError(..) => None,
         }
     }
 }
@@ -401,7 +413,15 @@ impl<'a> Probe<'a> {
                 return Err(CompileError(compile_run_output.compile_output));
             }
         };
-        Ok(FromStr::from_str(run_out_string.trim()).unwrap())
+        // If the program produces invalid output, we don't really check what's
+        // wrong with the output right now. Either the lossy UTF-8 conversion
+        // will produce nonsense, or we will just fail to pick out a number
+        // here.
+        match FromStr::from_str(run_out_string.trim()) {
+            Ok(size) => Ok(size),
+            Err(..) => Err(OtherError("unexpected output from probe program"
+                                      .to_string())),
+        }
     }
 }
 
