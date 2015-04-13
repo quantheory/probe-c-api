@@ -284,6 +284,7 @@ pub type CProbeResult<T> = Result<T, CProbeError>;
 /// used for the compiler and run commands. If `'static` types implementing `Fn`
 /// are used (e.g. function pointers), the lifetime may be `'static`.
 pub struct Probe<'a> {
+    headers: Vec<String>,
     work_dir: PathBuf,
     compile_to: Box<Fn(&Path, &Path) -> CommandResult + 'a>,
     run: Box<Fn(&Path) -> CommandResult + 'a>,
@@ -299,6 +300,10 @@ impl<'a> fmt::Debug for Probe<'a> {
 impl<'a> Probe<'a> {
     /// Construct a `Probe` by specifying a work directory, a method to compile
     /// a C program, and a method to run a C program.
+    ///
+    /// The `headers` argument is a vector of headers to include in every C
+    /// program written by this probe. Each header should have the `<>` or `""`
+    /// delimiters surrounding it.
     ///
     /// The `work_dir` argument should be a path to a directory where the probe
     /// can read, write, and execute files. We could attempt to verify this, but
@@ -329,7 +334,8 @@ impl<'a> Probe<'a> {
     ///
     /// FIXME! Suggestions for equivalent non-POSIX examples, especially
     /// anything relevant for Windows, are welcomed.
-    pub fn new<C: 'a, R: 'a>(work_dir: &Path,
+    pub fn new<C: 'a, R: 'a>(headers: Vec<String>,
+                             work_dir: &Path,
                              compile_to: C,
                              run: R) -> Result<Probe<'a>, NewProbeError>
         where C: Fn(&Path, &Path) -> CommandResult,
@@ -341,6 +347,7 @@ impl<'a> Probe<'a> {
             Err(error) => { return Err(WorkDirMetadataInaccessible(error)); }
         }
         Ok(Probe {
+            headers: headers,
             work_dir: work_dir.to_path_buf(),
             compile_to: Box::new(compile_to),
             run: Box::new(run),
@@ -408,6 +415,9 @@ impl<'a> Probe<'a> {
     fn main_source_template(&self, headers: Vec<&str>, main_body: &str)
                             -> String {
         let mut header_includes = String::new();
+        for header in &self.headers {
+            write!(&mut header_includes, "#include {}\n", header).unwrap();
+        }
         for header in &headers {
             write!(&mut header_includes, "#include {}\n", header).unwrap();
         }
@@ -460,6 +470,7 @@ fn write_to_new_file(path: &Path, text: &str) -> io::Result<()> {
 impl Default for Probe<'static> {
     fn default() -> Self {
         Probe::new(
+            vec![],
             &env::temp_dir(),
             |source_path, exe_path| {
                 Command::new("gcc").arg(source_path)

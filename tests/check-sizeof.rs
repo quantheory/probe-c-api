@@ -10,6 +10,8 @@
 extern crate probe_c_api;
 
 use std::default::Default;
+use std::env;
+use std::process::Command;
 
 use probe_c_api::{CProbeError, Probe};
 
@@ -28,4 +30,22 @@ fn sizeof_compilation_error() {
         CProbeError::CompileError(..) => true,
         _ => false,
     });
+}
+
+#[test]
+fn sizeof_type_in_header() {
+    let probe = Probe::new(
+        vec!["<inttypes.h>".to_string()],
+        &env::temp_dir(),
+        |source_path, exe_path| {
+            Command::new("gcc").arg(source_path)
+                               .arg("-o").arg(exe_path)
+                               .output()
+        },
+        |exe_path| {
+            Command::new(exe_path).output()
+        },
+    ).unwrap();
+    let i32_size = probe.check_sizeof("int32_t").unwrap();
+    assert_eq!(4, i32_size);
 }

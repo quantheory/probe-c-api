@@ -25,6 +25,7 @@ fn new_probe_checks_directory() {
         f.write_all("bar\n".as_bytes()).unwrap();
     }
     let new_probe_result = Probe::new(
+        vec![],
         &file_path,
         |_, _| { Command::new(":").output() },
         |_| { Command::new(":").output() },
@@ -39,6 +40,7 @@ fn new_probe_checks_directory() {
 fn new_probe_errors_on_inaccessible_metadata() {
     let fake_path = env::temp_dir().join("not_a_real_directory");
     let new_probe_result = Probe::new(
+        vec![],
         &fake_path,
         |_, _| { Command::new(":").output() },
         |_| { Command::new(":").output() },
