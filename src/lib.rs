@@ -42,11 +42,12 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
-use std::str::{FromStr, from_utf8};
+use std::str::FromStr;
 
 use rand::random;
 
 use NewProbeError::*;
+use CProbeError::*;
 
 // FIXME? It's not clear whether simply aliasing the standard library types will
 // provide the functionality we want from `CommandResult`, so we could hedge our
@@ -119,6 +120,13 @@ impl Error for NewProbeError {
     }
 }
 
+// Utility to print `process::Output` in a human-readable form.
+fn output_as_string(output: &process::Output) -> String {
+    format!("{{ status: {:?}, stdout: {}, stderr: {} }}",
+            output.status, String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr))
+}
+
 /// Outputs of both compilation and running.
 pub struct CompileRunOutput {
     /// Output of the compilation phase.
@@ -130,11 +138,6 @@ pub struct CompileRunOutput {
 
 impl fmt::Debug for CompileRunOutput {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        fn output_as_string(output: &process::Output) -> String {
-            format!("{{ status: {:?}, stdout: {}, stderr: {} }}",
-                    output.status, String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr))
-        }
         f.write_fmt(
             format_args!("probe_c_api::CompileRunOutput{{ \
                           compile output: {} \
@@ -148,8 +151,92 @@ impl fmt::Debug for CompileRunOutput {
     }
 }
 
-/// Result of checks that compile and run a program.
-pub type CompileRunResult = io::Result<CompileRunOutput>;
+/// Error type used when a C API probing program fails to compile or run.
+pub enum CProbeError {
+    /// An I/O error prevented the operation from continuing.
+    IoError(io::Error),
+    /// Compilation failed.
+    CompileError(process::Output),
+    /// The probing program failed when run. The compilation output is included
+    /// to assist debugging.
+    RunError(process::Output, process::Output),
+}
+
+impl fmt::Debug for CProbeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            IoError(ref error) => {
+                f.write_fmt(
+                    format_args!("IoError{{ {:?} }}", error)
+                )
+            }
+            CompileError(ref output) => {
+                f.write_fmt(
+                    format_args!("CompileError{}", output_as_string(output))
+                )
+            }
+            RunError(ref compile_output, ref run_output) => {
+                f.write_fmt(
+                    format_args!("RunError{{\
+                                  compile_output: {}\
+                                  run_output: {}\
+                                  }}",
+                                 output_as_string(compile_output),
+                                 output_as_string(run_output))
+                )
+            }
+        }
+    }
+}
+
+impl fmt::Display for CProbeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            IoError(ref error) => {
+                f.write_fmt(
+                    format_args!("I/O error: {}", error)
+                )
+            }
+            CompileError(ref output) => {
+                f.write_fmt(
+                    format_args!("compilation error with output: {}",
+                                 output_as_string(output))
+                )
+            }
+            RunError(_, ref run_output) => {
+                f.write_fmt(
+                    format_args!("test program error with output: {}",
+                                 output_as_string(run_output))
+                )
+            }
+        }
+    }
+}
+
+impl Error for CProbeError {
+    fn description(&self) -> &str {
+        match *self {
+            IoError(..) => "I/O error",
+            CompileError(..) => "error when compiling C probe program",
+            RunError(..) => "error when running C probe program",
+        }
+    }
+    fn cause(&self) -> Option<&Error> {
+        match *self {
+            IoError(ref error) => Some(error),
+            CompileError(..) | RunError(..) => None,
+        }
+    }
+}
+
+impl From<io::Error> for CProbeError {
+    fn from(error: io::Error) -> Self {
+        IoError(error)
+    }
+}
+
+/// Result type from most functions that create C probing programs.
+pub type CProbeResult<T> = Result<T, CProbeError>;
 
 /// A struct that stores information about how to compile and run test programs.
 ///
@@ -260,7 +347,7 @@ impl<'a> Probe<'a> {
     ///
     /// Like `check_compile`, this provides little value, but is available as a
     /// minor convenience.
-    pub fn check_run(&self, source: &str) -> CompileRunResult {
+    pub fn check_run(&self, source: &str) -> io::Result<CompileRunOutput> {
         let (source_path, exe_path) = self.random_source_and_exe_paths();
         try!(write_to_new_file(&source_path, source));
         let compile_output = try!((*self.compile_to)(&source_path, &exe_path));
@@ -294,17 +381,26 @@ impl<'a> Probe<'a> {
     }
 
     /// Get the size of a type, in bytes.
-    pub fn check_sizeof(&self, type_: &str) -> io::Result<usize> {
+    pub fn check_sizeof(&self, type_: &str) -> CProbeResult<usize> {
         let headers: Vec<&str> = vec!["<stdio.h>"];
         let main_body = format!("printf(\"%zd\\n\", sizeof({}));\n\
                                  return 0;",
                                 type_);
         let source = self.main_source_template(headers, &main_body);
         let compile_run_output = try!(self.check_run(&source));
-        // FIXME! Deal with compilation/run errors properly.
-        let run_out_string = from_utf8(&compile_run_output.run_output.unwrap()
-                                                          .stdout)
-                                 .unwrap().to_string();
+        let run_out_string = match compile_run_output.run_output {
+            Some(ref run_output) => {
+                if run_output.status.success() {
+                    String::from_utf8_lossy(&run_output.stdout)
+                } else {
+                    return Err(RunError(compile_run_output.compile_output,
+                                        run_output.clone()));
+                }
+            }
+            None => {
+                return Err(CompileError(compile_run_output.compile_output));
+            }
+        };
         Ok(FromStr::from_str(run_out_string.trim()).unwrap())
     }
 }

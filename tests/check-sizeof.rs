@@ -11,11 +11,21 @@ extern crate probe_c_api;
 
 use std::default::Default;
 
-use probe_c_api::Probe;
+use probe_c_api::{CProbeError, Probe};
 
 #[test]
 fn sizeof_char() {
     let probe = <Probe>::default();
     let char_size = probe.check_sizeof("char").unwrap();
     assert_eq!(1, char_size);
+}
+
+#[test]
+fn sizeof_compilation_error() {
+    let probe = <Probe>::default();
+    let error = probe.check_sizeof("><").unwrap_err();
+    assert!(match error {
+        CProbeError::CompileError(..) => true,
+        _ => false,
+    });
 }
