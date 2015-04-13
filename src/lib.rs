@@ -411,7 +411,7 @@ impl<'a> Probe<'a> {
         })
     }
 
-    /// Utility for various checks that use a type in some simple way in main.
+    /// Utility for various checks that use some simple code in `main`.
     fn main_source_template(&self, headers: Vec<&str>, main_body: &str)
                             -> String {
         let mut header_includes = String::new();
@@ -429,12 +429,12 @@ impl<'a> Probe<'a> {
                 main_body)
     }
 
-    /// Get the size of a C type, in bytes.
-    pub fn check_sizeof(&self, type_: &str) -> CProbeResult<usize> {
-        let headers: Vec<&str> = vec!["<stdio.h>"];
-        let main_body = format!("printf(\"%zd\\n\", sizeof({}));\n\
-                                 return 0;",
-                                type_);
+    /// Utility for code that simply prints a Rust constant, readable using
+    /// `FromStr::from_str`, in `main`.
+    fn run_to_get_rust_constant<T: FromStr>(&self,
+                                                 headers: Vec<&str>,
+                                                 main_body: &str)
+                                                 -> CProbeResult<T> {
         let source = self.main_source_template(headers, &main_body);
         let compile_run_output = try!(self.check_run(&source));
         let run_out_string = try!(compile_run_output.successful_run_output());
@@ -449,6 +449,15 @@ impl<'a> Probe<'a> {
         }
     }
 
+    /// Get the size of a C type, in bytes.
+    pub fn check_sizeof(&self, type_: &str) -> CProbeResult<usize> {
+        let headers: Vec<&str> = vec!["<stdio.h>"];
+        let main_body = format!("printf(\"%zd\\n\", sizeof({}));\n\
+                                 return 0;",
+                                type_);
+        self.run_to_get_rust_constant(headers, &main_body)
+    }
+
     /// Get the alignment of a C type, in bytes.
     ///
     /// Note that this method depends on the compiler having implemented C11
@@ -458,18 +467,7 @@ impl<'a> Probe<'a> {
         let main_body = format!("printf(\"%zd\\n\", alignof({}));\n\
                                  return 0;",
                                 type_);
-        let source = self.main_source_template(headers, &main_body);
-        let compile_run_output = try!(self.check_run(&source));
-        let run_out_string = try!(compile_run_output.successful_run_output());
-        // If the program produces invalid output, we don't really check what's
-        // wrong with the output right now. Either the lossy UTF-8 conversion
-        // will produce nonsense, or we will just fail to pick out a number
-        // here.
-        match FromStr::from_str(run_out_string.trim()) {
-            Ok(align) => Ok(align),
-            Err(..) => Err(OtherError("unexpected output from probe program"
-                                      .to_string())),
-        }
+        self.run_to_get_rust_constant(headers, &main_body)
     }
 
     /// Check to see if a macro is defined.
@@ -492,18 +490,7 @@ impl<'a> Probe<'a> {
                                  #endif\n\
                                  return 0;",
                                 macro_);
-        let source = self.main_source_template(headers, &main_body);
-        let compile_run_output = try!(self.check_run(&source));
-        let run_out_string = try!(compile_run_output.successful_run_output());
-        // If the program produces invalid output, we don't really check what's
-        // wrong with the output right now. Either the lossy UTF-8 conversion
-        // will produce nonsense, or we will just fail to pick out a number
-        // here.
-        match FromStr::from_str(run_out_string.trim()) {
-            Ok(align) => Ok(align),
-            Err(..) => Err(OtherError("unexpected output from probe program"
-                                      .to_string())),
-        }
+        self.run_to_get_rust_constant(headers, &main_body)
     }
 }
 
