@@ -14,6 +14,7 @@ use std::default::Default;
 use probe_c_api::Probe;
 
 #[test]
+#[cfg_attr(not(test_alignof), ignore)]
 fn alignof_char() {
     let probe = <Probe>::default();
     let char_align = probe.check_alignof("char").unwrap();
