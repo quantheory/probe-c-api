@@ -46,7 +46,18 @@ In such cases, there are three possible approaches:
     that's guided by knowledge of the *documented* API, which is input by the
     developer of the bindings. This results in a "best of both worlds" situation
     where the ability to create correct bindings is not dependent on hard-coded
-    knowledge about the library, platform, or C compiler.
+    knowledge about the library's implementation, the platform, or the C
+    compiler.
+
+    This does come at a bit of a price. Programs that "probe" the API to
+    discover implementation details rely heavily on knowledge provided by the
+    user. Without directly parsing and interpreting the header, it is not
+    usually possible to discover identifiers not specified by the user. It is
+    also not possible to get information about types defined in a library,
+    e.g. the names, order, and types of fields in a struct. The user needs to
+    either already possess this information, or make do with an incomplete
+    specification, e.g. knowing the size and minimum alignment of a struct, but
+    without knowing anything about its fields.
 
     Perhaps the biggest disadvantage of this approach is that it does not work
     well for cross-compilation. In order to probe a C library, it is usually
