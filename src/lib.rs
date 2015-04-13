@@ -471,6 +471,40 @@ impl<'a> Probe<'a> {
                                       .to_string())),
         }
     }
+
+    /// Check to see if a macro is defined.
+    ///
+    /// One obvious use for this is to check for macros that are intended to be
+    /// used with `#ifdef`, e.g. macros that communicate configuration options
+    /// originally used to build the library.
+    ///
+    /// A less obvious use is to check whether or not a constant or function has
+    /// been implemented as a macro, for cases where this is not specified in
+    /// the API documentation, or differs between library versions. In such
+    /// cases, bindings may have to omit functionality provided by macros, or
+    /// else implement such functionality via some special workaround.
+    pub fn macro_is_defined(&self, macro_: &str) -> CProbeResult<bool> {
+        let headers: Vec<&str> = vec!["<stdio.h>", "<stdalign.h>"];
+        let main_body = format!("#ifdef {}\n\
+                                 printf(\"true\");\n\
+                                 #else\n\
+                                 printf(\"false\");\n\
+                                 #endif\n\
+                                 return 0;",
+                                macro_);
+        let source = self.main_source_template(headers, &main_body);
+        let compile_run_output = try!(self.check_run(&source));
+        let run_out_string = try!(compile_run_output.successful_run_output());
+        // If the program produces invalid output, we don't really check what's
+        // wrong with the output right now. Either the lossy UTF-8 conversion
+        // will produce nonsense, or we will just fail to pick out a number
+        // here.
+        match FromStr::from_str(run_out_string.trim()) {
+            Ok(align) => Ok(align),
+            Err(..) => Err(OtherError("unexpected output from probe program"
+                                      .to_string())),
+        }
+    }
 }
 
 // Little utility to cat something to a new file.
