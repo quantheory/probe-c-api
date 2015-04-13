@@ -450,7 +450,7 @@ impl<'a> Probe<'a> {
     }
 
     /// Get the size of a C type, in bytes.
-    pub fn check_sizeof(&self, type_: &str) -> CProbeResult<usize> {
+    pub fn size_of(&self, type_: &str) -> CProbeResult<usize> {
         let headers: Vec<&str> = vec!["<stdio.h>"];
         let main_body = format!("printf(\"%zd\\n\", sizeof({}));\n\
                                  return 0;",
@@ -462,7 +462,7 @@ impl<'a> Probe<'a> {
     ///
     /// Note that this method depends on the compiler having implemented C11
     /// alignment facilities (specifically `stdalign.h` and `alignof`).
-    pub fn check_alignof(&self, type_: &str) -> CProbeResult<usize> {
+    pub fn align_of(&self, type_: &str) -> CProbeResult<usize> {
         let headers: Vec<&str> = vec!["<stdio.h>", "<stdalign.h>"];
         let main_body = format!("printf(\"%zd\\n\", alignof({}));\n\
                                  return 0;",
@@ -481,7 +481,7 @@ impl<'a> Probe<'a> {
     /// the API documentation, or differs between library versions. In such
     /// cases, bindings may have to omit functionality provided by macros, or
     /// else implement such functionality via some special workaround.
-    pub fn macro_is_defined(&self, macro_: &str) -> CProbeResult<bool> {
+    pub fn is_defined_macro(&self, token: &str) -> CProbeResult<bool> {
         let headers: Vec<&str> = vec!["<stdio.h>"];
         let main_body = format!("#ifdef {}\n\
                                  printf(\"true\");\n\
@@ -489,7 +489,7 @@ impl<'a> Probe<'a> {
                                  printf(\"false\");\n\
                                  #endif\n\
                                  return 0;",
-                                macro_);
+                                token);
         self.run_to_get_rust_constant(headers, &main_body)
     }
 

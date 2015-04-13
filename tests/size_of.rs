@@ -18,14 +18,14 @@ use probe_c_api::{CProbeError, Probe};
 #[test]
 fn sizeof_char() {
     let probe = <Probe>::default();
-    let char_size = probe.check_sizeof("char").unwrap();
+    let char_size = probe.size_of("char").unwrap();
     assert_eq!(1, char_size);
 }
 
 #[test]
 fn sizeof_compilation_error() {
     let probe = <Probe>::default();
-    let error = probe.check_sizeof("><").unwrap_err();
+    let error = probe.size_of("><").unwrap_err();
     assert!(match error {
         CProbeError::CompileError(..) => true,
         _ => false,
@@ -46,6 +46,6 @@ fn sizeof_type_in_header() {
             Command::new(exe_path).output()
         },
     ).unwrap();
-    let i32_size = probe.check_sizeof("int32_t").unwrap();
+    let i32_size = probe.size_of("int32_t").unwrap();
     assert_eq!(4, i32_size);
 }

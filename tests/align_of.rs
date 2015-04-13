@@ -14,8 +14,9 @@ use std::default::Default;
 use probe_c_api::Probe;
 
 #[test]
-fn check_macro_definition() {
+#[cfg_attr(not(test_alignof), ignore)]
+fn alignof_char() {
     let probe = <Probe>::default();
-    assert!(probe.macro_is_defined("__STDC__").unwrap());
-    assert!(!probe.macro_is_defined("THISSHOULDNTBEDEFINED").unwrap());
+    let char_align = probe.align_of("char").unwrap();
+    assert_eq!(1, char_align);
 }
