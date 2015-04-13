@@ -4,6 +4,7 @@ name = "probe-c-api"
 version = "0.1.0"
 authors = ["Sean Patrick Santos <SeanPatrickSantos@gmail.com>"]
 description = "Library to probe C interface types and constants"
+documentation = "https://quantheory.github.io/probe-c-api/probe_c_api"
 repository = "https://github.com/quantheory/probe-c-api"
 readme = "README.md"
 keywords = ["bindings", "build", "C", "porting"]
