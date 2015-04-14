@@ -517,11 +517,27 @@ impl<'a> Probe<'a> {
     /// Of course it can only check the initial value of a mutable variable, not
     /// a value set at run time during normal library use.
     ///
-    /// Since this function returns an `i64`, it cannot handle integers that
-    /// have a larger representation in C, e.g. 128-bit integers.
+    /// Since this function returns an `i64`, it cannot handle values that
+    /// require a larger representation, e.g. 128-bit integers.
     pub fn signed_integer_constant(&self, constant: &str) -> CProbeResult<i64> {
         let headers = vec!["<stdio.h>"];
         let main_body = format!("printf(\"%lld\\n\", (long long) {});\n\
+                                 return 0;",
+                                constant);
+        self.run_to_get_rust_constant(headers, &main_body)
+    }
+
+    /// Get the value of an unsigned integer constant defined in a header file.
+    ///
+    /// See also the documentation for the signed version of this function.
+    ///
+    /// Since this function returns a `u64`, it cannot represent values outside
+    /// of the range of a `u64`.
+    pub fn unsigned_integer_constant(&self, constant: &str)
+                                     -> CProbeResult<u64> {
+        let headers = vec!["<stdio.h>"];
+        let main_body = format!("printf(\"%llu\\n\", \
+                                        (unsigned long long) {});\n\
                                  return 0;",
                                 constant);
         self.run_to_get_rust_constant(headers, &main_body)

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![deny(overflowing_literals)]
+
 extern crate probe_c_api;
 
 use std::env;
@@ -45,4 +47,17 @@ fn signed_integer_constant() {
 fn signed_integer_constant_from_macro() {
     let probe = new_constant_probe();
     assert_eq!(-1, probe.signed_integer_constant("NEGATIVE_ONE").unwrap());
+}
+
+#[test]
+fn unsigned_integer_constant() {
+    let probe = new_constant_probe();
+    assert_eq!(18446744073709551615,
+               probe.unsigned_integer_constant("huge_64_bit_int").unwrap());
+}
+
+#[test]
+fn unsigned_integer_constant_from_macro() {
+    let probe = new_constant_probe();
+    assert_eq!(1, probe.unsigned_integer_constant("ONE").unwrap());
 }

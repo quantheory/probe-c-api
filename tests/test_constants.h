@@ -15,3 +15,7 @@
 const int negative_one = -1;
 
 #define NEGATIVE_ONE -1
+
+const unsigned long long huge_64_bit_int = 18446744073709551615;
+
+#define ONE 1
