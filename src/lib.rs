@@ -456,7 +456,7 @@ impl<'a> Probe<'a> {
 
     /// Get the size of a C type, in bytes.
     pub fn size_of(&self, type_: &str) -> CProbeResult<usize> {
-        let headers: Vec<&str> = vec!["<stdio.h>"];
+        let headers = vec!["<stdio.h>"];
         let main_body = format!("printf(\"%zd\\n\", sizeof({}));\n\
                                  return 0;",
                                 type_);
@@ -468,7 +468,7 @@ impl<'a> Probe<'a> {
     /// Note that this method depends on the compiler having implemented C11
     /// alignment facilities (specifically `stdalign.h` and `alignof`).
     pub fn align_of(&self, type_: &str) -> CProbeResult<usize> {
-        let headers: Vec<&str> = vec!["<stdio.h>", "<stdalign.h>"];
+        let headers = vec!["<stdio.h>", "<stdalign.h>"];
         let main_body = format!("printf(\"%zd\\n\", alignof({}));\n\
                                  return 0;",
                                 type_);
@@ -487,11 +487,11 @@ impl<'a> Probe<'a> {
     /// cases, bindings may have to omit functionality provided by macros, or
     /// else implement such functionality via some special workaround.
     pub fn is_defined_macro(&self, token: &str) -> CProbeResult<bool> {
-        let headers: Vec<&str> = vec!["<stdio.h>"];
+        let headers = vec!["<stdio.h>"];
         let main_body = format!("#ifdef {}\n\
-                                 printf(\"true\");\n\
+                                 printf(\"true\\n\");\n\
                                  #else\n\
-                                 printf(\"false\");\n\
+                                 printf(\"false\\n\");\n\
                                  #endif\n\
                                  return 0;",
                                 token);
@@ -500,14 +500,27 @@ impl<'a> Probe<'a> {
 
     /// Check to see if an integer type is signed or unsigned.
     pub fn is_signed(&self, type_: &str) -> CProbeResult<bool> {
-        let headers: Vec<&str> = vec!["<stdio.h>"];
+        let headers = vec!["<stdio.h>"];
         let main_body = format!("if ((({})-1) < 0) {{\n\
-                                 printf(\"true\");\n\
+                                 printf(\"true\\n\");\n\
                                  }} else {{\n\
-                                 printf(\"false\");\n\
+                                 printf(\"false\\n\");\n\
                                  }}\n\
                                  return 0;",
                                 type_);
+        self.run_to_get_rust_constant(headers, &main_body)
+    }
+
+    /// Get the value of a signed integer constant defined in a header file.
+    ///
+    /// This should work whether the constant is a global variable or a macro.
+    /// Of course it can only check the initial value of a mutable variable, not
+    /// a value set at run time during normal library use.
+    pub fn signed_integer_constant(&self, constant: &str) -> CProbeResult<i64> {
+        let headers = vec!["<stdio.h>"];
+        let main_body = format!("printf(\"%lld\\n\", {});\n\
+                                 return 0;",
+                                constant);
         self.run_to_get_rust_constant(headers, &main_body)
     }
 }
