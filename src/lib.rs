@@ -516,6 +516,9 @@ impl<'a> Probe<'a> {
     /// This should work whether the constant is a global variable or a macro.
     /// Of course it can only check the initial value of a mutable variable, not
     /// a value set at run time during normal library use.
+    ///
+    /// Since this function returns an `i64`, it cannot handle integers that
+    /// have a larger representation in C, e.g. 128-bit integers.
     pub fn signed_integer_constant(&self, constant: &str) -> CProbeResult<i64> {
         let headers = vec!["<stdio.h>"];
         let main_body = format!("printf(\"%lld\\n\", (long long) {});\n\

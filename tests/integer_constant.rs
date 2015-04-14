@@ -41,6 +41,7 @@ fn signed_integer_constant() {
     assert_eq!(-1, probe.signed_integer_constant("negative_one").unwrap());
 }
 
+#[test]
 fn signed_integer_constant_from_macro() {
     let probe = new_constant_probe();
     assert_eq!(-1, probe.signed_integer_constant("NEGATIVE_ONE").unwrap());
