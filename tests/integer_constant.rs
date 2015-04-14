@@ -38,5 +38,10 @@ fn new_constant_probe() -> Probe<'static> {
 #[test]
 fn signed_integer_constant() {
     let probe = new_constant_probe();
-    assert_eq!(1, probe.signed_integer_constant("one").unwrap());
+    assert_eq!(-1, probe.signed_integer_constant("negative_one").unwrap());
+}
+
+fn signed_integer_constant_from_macro() {
+    let probe = new_constant_probe();
+    assert_eq!(-1, probe.signed_integer_constant("NEGATIVE_ONE").unwrap());
 }

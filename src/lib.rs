@@ -518,7 +518,7 @@ impl<'a> Probe<'a> {
     /// a value set at run time during normal library use.
     pub fn signed_integer_constant(&self, constant: &str) -> CProbeResult<i64> {
         let headers = vec!["<stdio.h>"];
-        let main_body = format!("printf(\"%lld\\n\", {});\n\
+        let main_body = format!("printf(\"%lld\\n\", (long long) {});\n\
                                  return 0;",
                                 constant);
         self.run_to_get_rust_constant(headers, &main_body)
