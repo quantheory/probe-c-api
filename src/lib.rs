@@ -542,6 +542,32 @@ impl<'a> Probe<'a> {
                                 constant);
         self.run_to_get_rust_constant(headers, &main_body)
     }
+
+    /// Get the Rust type corresponding to a C integer type.
+    ///
+    /// This assumes that an integer type is passed in; we can check the size
+    /// and signedness of the type, but some types, e.g. floats, may be treated
+    /// as a signed integer of the same size.
+    ///
+    /// Note that we cannot distinguish integer types with the same
+    /// representation, so for instance `size_t` may translate to `u32` or
+    /// `u64`, but will never be `usize`.
+    ///
+    /// If `Ok(None)` is returned, the type is not the same size as any Rust
+    /// integer. This may happen if, for instance, the C compiler supports
+    /// 128-bit integers, which are not (as of this writing) in the Rust
+    /// prelude.
+    pub fn rust_equivalent_integer(&self, type_: &str)
+                               -> CProbeResult<Option<String>> {
+        let signed_prefix = if try!(self.is_signed(type_)) { "i" } else { "u" };
+        let size_of_type = 8 * try!(self.size_of(type_));
+        // If there is no equivalent Rust type, return `None`.
+        match size_of_type {
+            8 | 16 | 32 | 64 => {}
+            _ => { return Ok(None); }
+        };
+        Ok(Some(format!("{}{}", signed_prefix, size_of_type)))
+    }
 }
 
 // Little utility to cat something to a new file.
