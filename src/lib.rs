@@ -557,8 +557,8 @@ impl<'a> Probe<'a> {
     /// integer. This may happen if, for instance, the C compiler supports
     /// 128-bit integers, which are not (as of this writing) in the Rust
     /// prelude.
-    pub fn rust_equivalent_integer(&self, type_: &str)
-                               -> CProbeResult<Option<String>> {
+    pub fn equivalent_rust_integer(&self, type_: &str)
+                                   -> CProbeResult<Option<String>> {
         let signed_prefix = if try!(self.is_signed(type_)) { "i" } else { "u" };
         let size_of_type = 8 * try!(self.size_of(type_));
         // If there is no equivalent Rust type, return `None`.

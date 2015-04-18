@@ -20,7 +20,7 @@ use std::process::Command;
 use probe_c_api::Probe;
 
 #[test]
-fn check_rust_equivalent_integer() {
+fn check_equivalent_rust_integer() {
     let probe = Probe::new(
         vec!["\"tests/test_types.h\"".into()],
         &env::temp_dir(),
@@ -36,11 +36,11 @@ fn check_rust_equivalent_integer() {
     ).unwrap();
     for size in &["8", "16", "32", "64"] {
         assert_eq!(format!("i{}", size),
-                   probe.rust_equivalent_integer(
+                   probe.equivalent_rust_integer(
                        &format!("alias_signed_{}_bit", size)).unwrap()
                                                              .unwrap());
         assert_eq!(format!("u{}", size),
-                   probe.rust_equivalent_integer(
+                   probe.equivalent_rust_integer(
                        &format!("alias_unsigned_{}_bit", size)).unwrap()
                                                                .unwrap());
     }
