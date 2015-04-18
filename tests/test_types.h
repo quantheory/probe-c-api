@@ -23,3 +23,6 @@ typedef uint8_t alias_unsigned_8_bit;
 typedef uint16_t alias_unsigned_16_bit;
 typedef uint32_t alias_unsigned_32_bit;
 typedef uint64_t alias_unsigned_64_bit;
+
+typedef float alias_float_32_bit;
+typedef double alias_float_64_bit;

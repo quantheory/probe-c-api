@@ -568,6 +568,22 @@ impl<'a> Probe<'a> {
         };
         Ok(Some(format!("{}{}", signed_prefix, size_of_type)))
     }
+
+    /// Get the Rust type corresponding to a C float type.
+    ///
+    /// See the `equivalent_rust_integer` documentation for details and
+    /// limitations, since this function is very similar. The only Rust
+    /// types we can discover here are `f32` and `f64`.
+    pub fn equivalent_rust_float(&self, type_: &str)
+                                 -> CProbeResult<Option<String>> {
+        let size_of_type = 8 * try!(self.size_of(type_));
+        // If there is no equivalent Rust type, return `None`.
+        match size_of_type {
+            32 | 64 => {}
+            _ => { return Ok(None); }
+        };
+        Ok(Some(format!("f{}", size_of_type)))
+    }
 }
 
 // Little utility to cat something to a new file.
