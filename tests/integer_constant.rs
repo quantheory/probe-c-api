@@ -51,8 +51,9 @@ fn signed_integer_constant_from_macro() {
 
 #[test]
 fn unsigned_integer_constant() {
+    use std::u64;
     let probe = new_constant_probe();
-    assert_eq!(18446744073709551615,
+    assert_eq!(u64::MAX,
                probe.unsigned_integer_constant("huge_64_bit_int").unwrap());
 }
 

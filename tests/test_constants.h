@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <inttypes.h>
+
 const int negative_one = -1;
 
 #define NEGATIVE_ONE -1
 
-const unsigned long long huge_64_bit_int = 18446744073709551615;
+const uint64_t huge_64_bit_int = UINT64_MAX;
 
 #define ONE 1
