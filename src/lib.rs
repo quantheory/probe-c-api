@@ -28,6 +28,13 @@
 //! Currently, all strings corresponding to C source code are represented as
 //! UTF-8. If this is a problem, the user may modify the compile and run
 //! functions commands to do appropriate translation.
+//!
+//! # `size_t`
+//!
+//! For sizes and other values that typically use pointer-size integers, we use
+//! a `u64`, even when running on 32-bit systems. This ensures correctness in
+//! the (unlikely) event that we are doing cross-compilation involving a 64-bit
+//! library.
 
 #![warn(missing_copy_implementations, missing_debug_implementations)]
 #![warn(trivial_casts, trivial_numeric_casts, unused_extern_crates)]
@@ -53,6 +60,7 @@ use rand::random;
 
 use NewProbeError::*;
 use CProbeError::*;
+use CTypeKind::*;
 
 // FIXME? It's not clear whether simply aliasing the standard library types will
 // provide the functionality we want from `CommandResult`, so we could hedge our
@@ -282,6 +290,27 @@ impl From<io::Error> for CProbeError {
 /// Result type from most functions that create C probing programs.
 pub type CProbeResult<T> = Result<T, CProbeError>;
 
+/// A very primitive classification of types in C.
+#[derive(Clone, Copy, Debug)]
+pub enum CTypeKind {
+    /// A primitive integer type.
+    CInteger{ /** Whether type is signed. */ signed: bool},
+    /// A primitive floating-point type.
+    CFloat,
+    /// A type that `probe_c_api` knows nothing about.
+    CUnknown,
+}
+
+/// Information about a C type, based on a combination of user input and
+/// information that can be discovered by probing.
+#[derive(Debug)]
+pub struct CType {
+    /// The size in bytes.
+    pub size: u64,
+    /// Type metadata, providing details for tasks such as binding generation.
+    pub kind: CTypeKind,
+}
+
 /// A struct that stores information about how to compile and run test programs.
 ///
 /// The main functionality of `probe_c_api` is implemented using the methods on
@@ -455,7 +484,7 @@ impl<'a> Probe<'a> {
     }
 
     /// Get the size of a C type, in bytes.
-    pub fn size_of(&self, type_: &str) -> CProbeResult<usize> {
+    pub fn size_of(&self, type_: &str) -> CProbeResult<u64> {
         let headers = vec!["<stdio.h>"];
         let main_body = format!("printf(\"%zd\\n\", sizeof({}));\n\
                                  return 0;",
@@ -467,7 +496,7 @@ impl<'a> Probe<'a> {
     ///
     /// Note that this method depends on the compiler having implemented C11
     /// alignment facilities (specifically `stdalign.h` and `alignof`).
-    pub fn align_of(&self, type_: &str) -> CProbeResult<usize> {
+    pub fn align_of(&self, type_: &str) -> CProbeResult<u64> {
         let headers = vec!["<stdio.h>", "<stdalign.h>"];
         let main_body = format!("printf(\"%zd\\n\", alignof({}));\n\
                                  return 0;",
